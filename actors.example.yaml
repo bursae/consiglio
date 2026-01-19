@@ -1,0 +1,16 @@
+actors:
+  - name: Regulator
+    position: 80
+    power: 0.7
+    salience: 0.9
+    risk: 0.2
+  - name: Industry
+    position: 40
+    power: 0.6
+    salience: 0.7
+    risk: 0.3
+  - name: Public
+    position: 60
+    power: 0.5
+    salience: 0.8
+    risk: 0.1

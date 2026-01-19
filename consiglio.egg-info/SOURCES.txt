@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+consiglio/__init__.py
+consiglio/__main__.py
+consiglio/cli.py
+consiglio/io.py
+consiglio/model.py
+consiglio/types.py
+consiglio.egg-info/PKG-INFO
+consiglio.egg-info/SOURCES.txt
+consiglio.egg-info/dependency_links.txt
+consiglio.egg-info/entry_points.txt
+consiglio.egg-info/requires.txt
+consiglio.egg-info/top_level.txt

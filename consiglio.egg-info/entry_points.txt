@@ -1,0 +1,2 @@
+[console_scripts]
+consiglio = consiglio.cli:main
