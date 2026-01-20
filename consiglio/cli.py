@@ -13,44 +13,25 @@ def main() -> None:
 
     predict_parser = subparsers.add_parser("predict", help="Predict equilibrium outcome.")
     predict_parser.add_argument("actors", help="Path to actors YAML/JSON file.")
-    predict_parser.add_argument("--iterations", type=int, default=100, help="Max iterations.")
-    predict_parser.add_argument("--epsilon", type=float, default=1e-4, help="Convergence threshold.")
-    predict_parser.add_argument(
-        "--format",
-        choices=("text", "json"),
-        default="text",
-        help="Output format.",
-    )
-    predict_parser.add_argument(
-        "--export",
-        dest="export_path",
-        help="Export influence ranking to CSV at the given path.",
-    )
+    predict_parser.add_argument("--json", action="store_true", help="Output JSON.")
+    predict_parser.add_argument("--export", dest="export_path", help="Export influence CSV.")
+    predict_parser.add_argument("--iterations", type=int, default=100, help=argparse.SUPPRESS)
+    predict_parser.add_argument("--epsilon", type=float, default=1e-4, help=argparse.SUPPRESS)
 
     shock_parser = subparsers.add_parser("shock", help="Run a shock scenario.")
     shock_parser.add_argument("actors", help="Path to actors YAML/JSON file.")
-    shock_parser.add_argument("--iterations", type=int, default=100, help="Max iterations.")
-    shock_parser.add_argument("--epsilon", type=float, default=1e-4, help="Convergence threshold.")
     shock_parser.add_argument(
-        "--set",
+        "--change",
         action="append",
         default=[],
-        metavar="NAME.FIELD=VALUE",
-        help="Set actor field to a value (repeatable).",
+        metavar="NAME.FIELD=VALUE|NAME.FIELD+=DELTA",
+        help="Change an actor field (repeatable).",
     )
-    shock_parser.add_argument(
-        "--delta",
-        action="append",
-        default=[],
-        metavar="NAME.FIELD=DELTA",
-        help="Add delta to actor field (repeatable).",
-    )
-    shock_parser.add_argument(
-        "--format",
-        choices=("text", "json"),
-        default="text",
-        help="Output format.",
-    )
+    shock_parser.add_argument("--json", action="store_true", help="Output JSON.")
+    shock_parser.add_argument("--set", action="append", default=[], help=argparse.SUPPRESS)
+    shock_parser.add_argument("--delta", action="append", default=[], help=argparse.SUPPRESS)
+    shock_parser.add_argument("--iterations", type=int, default=100, help=argparse.SUPPRESS)
+    shock_parser.add_argument("--epsilon", type=float, default=1e-4, help=argparse.SUPPRESS)
 
     args = parser.parse_args()
 
@@ -72,7 +53,7 @@ def handle_predict(args: argparse.Namespace) -> None:
     if args.export_path:
         export_csv(args.export_path, ranking)
 
-    if args.format == "json":
+    if args.json:
         payload = {
             "equilibrium": result["equilibrium"],
             "iterations": result["iterations"],
@@ -91,11 +72,11 @@ def handle_shock(args: argparse.Namespace) -> None:
     baseline = compute_equilibrium(actors, args.iterations, args.epsilon)
     baseline_ranking = influence_ranking(actors, baseline["weights"])
 
-    shocked = apply_shocks(actors, args.set, args.delta)
+    shocked = apply_shocks(actors, args.change, args.set, args.delta)
     shocked_result = compute_equilibrium(shocked, args.iterations, args.epsilon)
     shocked_ranking = influence_ranking(shocked, shocked_result["weights"])
 
-    if args.format == "json":
+    if args.json:
         payload = {
             "baseline": {
                 "equilibrium": baseline["equilibrium"],
@@ -157,22 +138,33 @@ def export_csv(path: str, ranking: list[dict]) -> None:
 
 
 def apply_shocks(
-    actors, set_changes: list[str], delta_changes: list[str]
+    actors,
+    change_specs: list[str],
+    set_changes: list[str],
+    delta_changes: list[str],
 ) -> list:
     updated = list(actors)
+    for change in change_specs:
+        name, field, value, is_delta = parse_change(change)
+        updated = [apply_change(actor, name, field, value, is_delta=is_delta) for actor in updated]
     for change in set_changes:
-        name, field, value = parse_change(change)
+        name, field, value, _ = parse_change(change)
         updated = [apply_change(actor, name, field, value, is_delta=False) for actor in updated]
     for change in delta_changes:
-        name, field, value = parse_change(change)
+        name, field, value, _ = parse_change(change)
         updated = [apply_change(actor, name, field, value, is_delta=True) for actor in updated]
     return updated
 
 
-def parse_change(raw: str) -> tuple[str, str, float]:
-    if "=" not in raw:
-        raise InputError("Shock changes must be NAME.FIELD=VALUE.")
-    left, value_str = raw.split("=", 1)
+def parse_change(raw: str) -> tuple[str, str, float, bool]:
+    if "+=" in raw:
+        left, value_str = raw.split("+=", 1)
+        is_delta = True
+    elif "=" in raw:
+        left, value_str = raw.split("=", 1)
+        is_delta = False
+    else:
+        raise InputError("Shock changes must be NAME.FIELD=VALUE or NAME.FIELD+=DELTA.")
     if "." not in left:
         raise InputError("Shock changes must target NAME.FIELD.")
     name, field = left.split(".", 1)
@@ -180,7 +172,7 @@ def parse_change(raw: str) -> tuple[str, str, float]:
         value = float(value_str)
     except ValueError as exc:
         raise InputError("Shock change value must be numeric.") from exc
-    return name.strip(), field.strip(), value
+    return name.strip(), field.strip(), value, is_delta
 
 
 def apply_change(actor, target_name: str, field: str, value: float, is_delta: bool):

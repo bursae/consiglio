@@ -1,32 +1,31 @@
 # Consiglio (MVP)
 
-Consiglio is a CLI bargaining-forecast engine that models outcomes as strategic bargaining among actors.
+Consiglio is a CLI tool that turns actor assumptions into a predicted bargaining outcome on a single 0-100 axis.
 
-## Install (local)
+Core promise: it does not predict the future; it shows the future implied by your assumptions.
+
+## Quickstart
 
 ```bash
-python -m pip install -e .
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
 ```
-
-## Usage
-
-Predict equilibrium:
 
 ```bash
 consiglio predict actors.example.yaml
 ```
 
-Shock an actor field:
-
 ```bash
-consiglio shock actors.example.yaml --delta "Regulator.power=0.1"
+consiglio shock actors.example.yaml --change "Regulator.power+=0.1"
 ```
 
-Export influence ranking:
+## Workflow
 
-```bash
-consiglio predict actors.example.yaml --export influence.csv
-```
+1. Define the axis (0-100) in plain language.
+2. List actors with positions and influence inputs.
+3. Run a baseline prediction.
+4. Run shocks to test what moves the outcome.
 
 ## Input format
 
@@ -39,15 +38,36 @@ actors:
     risk: 0.2
 ```
 
-## Output (text)
+Ranges:
 
-```
-Equilibrium outcome: 63.42
-Iterations: 12
-Converged: yes
+- `position`: 0 to 100
+- `power`, `salience`, `risk`: 0.0 to 1.0
 
-Top influencers:
-Rank  Actor                Weight     Share    Position
---------------------------------------------------------
-1     Regulator            0.504      54.0%    80.00
+## What the model does
+
+- Converts each actor into an influence weight: `power * salience * (1 - risk)`
+- Computes a weighted average outcome
+- Ranks actors by influence share
+
+## Demo dataset (global event)
+
+`actors.global_event.yaml` models a hypothetical global policy event on a 0-100 "trade restrictiveness" axis.
+
+```bash
+consiglio predict actors.global_event.yaml
 ```
+
+## Optional JSON output
+
+```bash
+consiglio predict actors.example.yaml --json
+```
+
+## Example files
+
+- `actors.example.yaml`
+- `actors.global_event.yaml`
+
+## License
+
+TBD
