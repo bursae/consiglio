@@ -11,9 +11,17 @@ class InputError(ValueError):
 
 
 def load_actors(path: str) -> list[Actor]:
+    actors, _ = load_input(path)
+    return actors
+
+
+def load_input(path: str) -> tuple[list[Actor], dict]:
     raw = _load_file(path)
-    if isinstance(raw, dict) and "actors" in raw:
-        raw = raw["actors"]
+    meta: dict = {}
+    if isinstance(raw, dict):
+        meta = _extract_meta(raw)
+        if "actors" in raw:
+            raw = raw["actors"]
     if not isinstance(raw, list):
         raise InputError("Input must be a list of actors or a mapping with an 'actors' list.")
 
@@ -26,7 +34,16 @@ def load_actors(path: str) -> list[Actor]:
 
     if not actors:
         raise InputError("Input contains zero actors.")
-    return actors
+    return actors, meta
+
+
+def _extract_meta(raw: dict) -> dict:
+    meta = {}
+    for key in ("scenario", "axis"):
+        value = raw.get(key)
+        if isinstance(value, str) and value.strip():
+            meta[key] = value.strip()
+    return meta
 
 
 def _load_file(path: str):

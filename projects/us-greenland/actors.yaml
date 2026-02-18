@@ -1,0 +1,53 @@
+scenario: "US-Greenland strategic access negotiations"
+axis: "US strategic access/influence in Greenland (0=no access, 100=full access)"
+actors:
+  - name: US Administration
+    position: 75
+    power: 0.75
+    salience: 0.8
+    risk: 0.2
+  - name: Greenland Government
+    position: 55
+    power: 0.55
+    salience: 0.9
+    risk: 0.35
+  - name: Denmark Government
+    position: 40
+    power: 0.65
+    salience: 0.7
+    risk: 0.3
+  - name: EU Institutions
+    position: 45
+    power: 0.5
+    salience: 0.5
+    risk: 0.25
+  - name: US Defense Establishment
+    position: 85
+    power: 0.6
+    salience: 0.7
+    risk: 0.25
+  - name: US Congress
+    position: 70
+    power: 0.6
+    salience: 0.6
+    risk: 0.3
+  - name: US Public Opinion
+    position: 45
+    power: 0.5
+    salience: 0.4
+    risk: 0.4
+  - name: US Economy
+    position: 60
+    power: 0.55
+    salience: 0.5
+    risk: 0.25
+  - name: Local Communities
+    position: 30
+    power: 0.45
+    salience: 0.8
+    risk: 0.4
+  - name: China Strategic Interests
+    position: 20
+    power: 0.4
+    salience: 0.6
+    risk: 0.35

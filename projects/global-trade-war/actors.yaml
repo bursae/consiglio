@@ -1,0 +1,33 @@
+scenario: "2018-2019 US-China trade war tariffs"
+axis: "trade restrictiveness (0=open trade, 100=high tariffs)"
+actors:
+  - name: US Administration
+    position: 85
+    power: 0.75
+    salience: 0.8
+    risk: 0.25
+  - name: China Government
+    position: 75
+    power: 0.7
+    salience: 0.85
+    risk: 0.3
+  - name: EU Commission
+    position: 45
+    power: 0.6
+    salience: 0.6
+    risk: 0.2
+  - name: WTO Secretariat
+    position: 25
+    power: 0.4
+    salience: 0.7
+    risk: 0.15
+  - name: Multinational Manufacturers
+    position: 30
+    power: 0.55
+    salience: 0.75
+    risk: 0.2
+  - name: US Consumers
+    position: 20
+    power: 0.35
+    salience: 0.5
+    risk: 0.1

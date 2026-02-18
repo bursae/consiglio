@@ -3,7 +3,7 @@ import json
 import sys
 from dataclasses import replace
 
-from .io import InputError, load_actors
+from .io import InputError, load_input
 from .model import compute_equilibrium, influence_ranking, serialize_actors
 
 
@@ -46,49 +46,118 @@ def main() -> None:
 
 
 def handle_predict(args: argparse.Namespace) -> None:
-    actors = load_actors(args.actors)
+    actors, meta = load_input(args.actors)
     result = compute_equilibrium(actors, args.iterations, args.epsilon)
     ranking = influence_ranking(actors, result["weights"])
+    pushers = top_pushers(actors, result["weights"], result["equilibrium"])
+    interpretation = interpret_outcome(result["equilibrium"])
+    actor_summaries = build_actor_summaries(
+        actors, result["positions_final"], result["weights"], result["equilibrium"]
+    )
+    alliances = alliance_summary(actor_summaries, result["equilibrium"])
 
     if args.export_path:
         export_csv(args.export_path, ranking)
 
     if args.json:
         payload = {
+            "scenario": meta.get("scenario"),
+            "axis": meta.get("axis"),
             "equilibrium": result["equilibrium"],
             "iterations": result["iterations"],
+            "rounds_estimate": result["iterations"],
             "converged": result["converged"],
+            "confidence": result["confidence"],
+            "interpretation": interpretation,
+            "median_position": result["median_position"],
+            "outcome_range": {
+                "p10": result["outcome_range"][0],
+                "p90": result["outcome_range"][1],
+            },
+            "conflict_index": result["conflict_index"],
+            "top_pushers": pushers,
+            "analyst_assessment": analyst_assessment(result, interpretation, pushers, meta.get("axis")),
             "influence": ranking,
-            "actors": serialize_actors(actors),
+            "actors": actor_summaries,
+            "alliances": alliances,
         }
         print(json.dumps(payload, indent=2))
         return
 
-    print_text_summary(result, ranking)
+    print_text_summary(result, ranking, meta, interpretation, pushers, actor_summaries, alliances)
 
 
 def handle_shock(args: argparse.Namespace) -> None:
-    actors = load_actors(args.actors)
+    actors, meta = load_input(args.actors)
     baseline = compute_equilibrium(actors, args.iterations, args.epsilon)
     baseline_ranking = influence_ranking(actors, baseline["weights"])
+    baseline_pushers = top_pushers(actors, baseline["weights"], baseline["equilibrium"])
+    baseline_interpretation = interpret_outcome(baseline["equilibrium"])
+    baseline_actor_summaries = build_actor_summaries(
+        actors, baseline["positions_final"], baseline["weights"], baseline["equilibrium"]
+    )
+    baseline_alliances = alliance_summary(baseline_actor_summaries, baseline["equilibrium"])
 
     shocked = apply_shocks(actors, args.change, args.set, args.delta)
     shocked_result = compute_equilibrium(shocked, args.iterations, args.epsilon)
     shocked_ranking = influence_ranking(shocked, shocked_result["weights"])
+    shocked_pushers = top_pushers(shocked, shocked_result["weights"], shocked_result["equilibrium"])
+    shocked_interpretation = interpret_outcome(shocked_result["equilibrium"])
+    shocked_actor_summaries = build_actor_summaries(
+        shocked,
+        shocked_result["positions_final"],
+        shocked_result["weights"],
+        shocked_result["equilibrium"],
+    )
+    shocked_alliances = alliance_summary(shocked_actor_summaries, shocked_result["equilibrium"])
 
     if args.json:
         payload = {
             "baseline": {
+                "scenario": meta.get("scenario"),
+                "axis": meta.get("axis"),
                 "equilibrium": baseline["equilibrium"],
                 "iterations": baseline["iterations"],
+                "rounds_estimate": baseline["iterations"],
                 "converged": baseline["converged"],
+                "confidence": baseline["confidence"],
+                "interpretation": baseline_interpretation,
+                "median_position": baseline["median_position"],
+                "outcome_range": {
+                    "p10": baseline["outcome_range"][0],
+                    "p90": baseline["outcome_range"][1],
+                },
+                "conflict_index": baseline["conflict_index"],
+                "top_pushers": baseline_pushers,
+                "analyst_assessment": analyst_assessment(
+                    baseline, baseline_interpretation, baseline_pushers, meta.get("axis")
+                ),
                 "influence": baseline_ranking,
+                "actors": baseline_actor_summaries,
+                "alliances": baseline_alliances,
             },
             "shock": {
+                "scenario": meta.get("scenario"),
+                "axis": meta.get("axis"),
                 "equilibrium": shocked_result["equilibrium"],
                 "iterations": shocked_result["iterations"],
+                "rounds_estimate": shocked_result["iterations"],
                 "converged": shocked_result["converged"],
+                "confidence": shocked_result["confidence"],
+                "interpretation": shocked_interpretation,
+                "median_position": shocked_result["median_position"],
+                "outcome_range": {
+                    "p10": shocked_result["outcome_range"][0],
+                    "p90": shocked_result["outcome_range"][1],
+                },
+                "conflict_index": shocked_result["conflict_index"],
+                "top_pushers": shocked_pushers,
+                "analyst_assessment": analyst_assessment(
+                    shocked_result, shocked_interpretation, shocked_pushers, meta.get("axis")
+                ),
                 "influence": shocked_ranking,
+                "actors": shocked_actor_summaries,
+                "alliances": shocked_alliances,
             },
             "delta": shocked_result["equilibrium"] - baseline["equilibrium"],
             "actors": serialize_actors(shocked),
@@ -107,10 +176,41 @@ def handle_shock(args: argparse.Namespace) -> None:
     print_influence_table(shocked_ranking)
 
 
-def print_text_summary(result: dict, ranking: list[dict]) -> None:
+def print_text_summary(
+    result: dict,
+    ranking: list[dict],
+    meta: dict,
+    interpretation: str,
+    pushers: dict,
+    actor_summaries: list[dict],
+    alliances: dict,
+) -> None:
+    if meta.get("scenario"):
+        print("Scenario:", meta["scenario"])
+    if meta.get("axis"):
+        print("Axis:", meta["axis"])
     print("Equilibrium outcome:", format_value(result["equilibrium"]))
-    print("Iterations:", result["iterations"])
+    print("Interpretation:", interpretation)
+    print("Median actor position:", format_value(result["median_position"]))
+    range_low, range_high = result["outcome_range"]
+    print("Implied range (10-90%):", f"{format_value(range_low)} - {format_value(range_high)}")
+    print("Bargaining rounds (est.):", result["iterations"])
     print("Converged:", "yes" if result["converged"] else "no")
+    print("Confidence:", format_percent(result["confidence"]))
+    print("Conflict index:", format_percent(result["conflict_index"]))
+    print(
+        "Analyst take:",
+        analyst_assessment(result, interpretation, pushers, meta.get("axis")),
+    )
+    print("")
+    print("Top pushers:")
+    print(format_pushers(pushers))
+    print("")
+    print("Alliances (final positions):")
+    print(format_alliances(alliances))
+    print("")
+    print("Revised positions:")
+    print_revised_positions(actor_summaries)
     print("")
     print("Top influencers:")
     print_influence_table(ranking)
@@ -188,6 +288,129 @@ def apply_change(actor, target_name: str, field: str, value: float, is_delta: bo
 
 def format_value(value: float) -> str:
     return f"{value:.2f}"
+
+
+def format_percent(value: float) -> str:
+    return f"{value * 100:.0f}%"
+
+
+def interpret_outcome(value: float) -> str:
+    if value <= 33:
+        return "low"
+    if value <= 66:
+        return "medium"
+    return "high"
+
+
+def top_pushers(actors, weights: list[float], equilibrium: float, limit: int = 2) -> dict:
+    higher = []
+    lower = []
+    for actor, weight in zip(actors, weights):
+        if actor.position > equilibrium:
+            higher.append((actor, weight))
+        elif actor.position < equilibrium:
+            lower.append((actor, weight))
+    higher.sort(key=lambda item: item[1], reverse=True)
+    lower.sort(key=lambda item: item[1], reverse=True)
+    return {
+        "higher": [
+            {
+                "name": actor.name,
+                "position": actor.position,
+                "weight": weight,
+            }
+            for actor, weight in higher[:limit]
+        ],
+        "lower": [
+            {
+                "name": actor.name,
+                "position": actor.position,
+                "weight": weight,
+            }
+            for actor, weight in lower[:limit]
+        ],
+    }
+
+
+def format_pushers(pushers: dict) -> str:
+    higher = ", ".join(item["name"] for item in pushers.get("higher", [])) or "none"
+    lower = ", ".join(item["name"] for item in pushers.get("lower", [])) or "none"
+    return f"Higher: {higher} | Lower: {lower}"
+
+
+def analyst_assessment(
+    result: dict, interpretation: str, pushers: dict, axis: str | None
+) -> str:
+    outcome = format_value(result["equilibrium"])
+    confidence = format_percent(result["confidence"])
+    higher = ", ".join(item["name"] for item in pushers.get("higher", [])) or "none"
+    lower = ", ".join(item["name"] for item in pushers.get("lower", [])) or "none"
+    axis_text = f" on {axis}" if axis else ""
+    return (
+        f"The balance of forces points to a {interpretation} outcome at {outcome}{axis_text} "
+        f"(confidence {confidence}). The main push is upward from {higher}, "
+        f"with counterweight from {lower}."
+    )
+
+
+def build_actor_summaries(
+    actors, final_positions: list[float], weights: list[float], equilibrium: float
+) -> list[dict]:
+    summaries = []
+    for actor, final_pos, weight in zip(actors, final_positions, weights):
+        shift = final_pos - actor.position
+        pressure = abs(actor.position - equilibrium) * weight
+        summaries.append(
+            {
+                "name": actor.name,
+                "position_initial": actor.position,
+                "position_final": final_pos,
+                "shift": shift,
+                "weight": weight,
+                "pressure": pressure,
+            }
+        )
+    return summaries
+
+
+def alliance_summary(actor_summaries: list[dict], equilibrium: float) -> dict:
+    higher = []
+    lower = []
+    neutral = []
+    for actor in actor_summaries:
+        if abs(actor["position_final"] - equilibrium) <= 1.0:
+            neutral.append(actor)
+        elif actor["position_final"] > equilibrium:
+            higher.append(actor)
+        else:
+            lower.append(actor)
+    higher.sort(key=lambda item: item["position_final"], reverse=True)
+    lower.sort(key=lambda item: item["position_final"])
+    neutral.sort(key=lambda item: item["weight"], reverse=True)
+    return {
+        "higher": [actor["name"] for actor in higher],
+        "lower": [actor["name"] for actor in lower],
+        "neutral": [actor["name"] for actor in neutral],
+    }
+
+
+def format_alliances(alliances: dict) -> str:
+    higher = ", ".join(alliances.get("higher", [])) or "none"
+    lower = ", ".join(alliances.get("lower", [])) or "none"
+    neutral = ", ".join(alliances.get("neutral", [])) or "none"
+    return f"Higher: {higher} | Lower: {lower} | Neutral: {neutral}"
+
+
+def print_revised_positions(actor_summaries: list[dict]) -> None:
+    header = f"{'Actor':<20} {'Initial':<8} {'Final':<8} {'Shift':<8} {'Pressure':<9}"
+    print(header)
+    print("-" * len(header))
+    for actor in actor_summaries:
+        print(
+            f"{actor['name']:<20} {actor['position_initial']:<8.2f} "
+            f"{actor['position_final']:<8.2f} {actor['shift']:<8.2f} "
+            f"{actor['pressure']:<9.2f}"
+        )
 
 
 def validate_actor_field(field: str, value: float) -> None:
