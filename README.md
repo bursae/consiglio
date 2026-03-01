@@ -27,6 +27,55 @@ consiglio shock actors.example.yaml --change "Regulator.power+=0.1"
 3. Run a baseline prediction.
 4. Run shocks to test what moves the outcome.
 
+## Methodology
+
+Consiglio uses a transparent, assumption-first approach:
+
+1. Translate the policy question into one bounded axis (`0-100`).
+2. Encode each actor's preference (`position`) and leverage profile (`power`, `salience`, `risk`).
+3. Convert actor inputs into influence weights.
+4. Compute a baseline equilibrium from weighted positions.
+5. Estimate uncertainty and contestation from position dispersion.
+6. Run counterfactual shocks by changing one or more actor fields.
+7. Compare baseline vs. shock deltas to identify pivotal actors and assumptions.
+
+This is a structured scenario engine, not an event prediction system. Output quality depends on input quality.
+
+## Model Description
+
+Core weight equation:
+
+`weight_i = power_i * salience_i * (1 - risk_i)`
+
+Equilibrium equation:
+
+`equilibrium = sum(position_i * weight_i) / sum(weight_i)`
+
+If all weights are zero, the model falls back to a simple average position.
+
+Derived outputs:
+
+- `confidence`: higher when actor positions cluster tightly.
+- `conflict_index`: higher when actor positions are more dispersed.
+- `implied outcome band`: a dispersion band around the equilibrium derived from weighted standard deviation.
+- `negotiation intensity (est.)`: a heuristic score derived from conflict index.
+- `revised positions`: a concession-adjusted post-negotiation estimate per actor.
+- `alliances`: actors grouped as higher/lower/neutral relative to equilibrium.
+- `top influencers`: actors ranked by influence share.
+
+Interpretation bands:
+
+- `0-33`: low
+- `34-66`: medium
+- `67-100`: high
+
+## Limitations
+
+- This is a single-pass heuristic model, not a calibrated forecast model.
+- The implied outcome band is not a statistical confidence interval.
+- Output is highly sensitive to input assumptions and actor definitions.
+- `confidence` and `conflict_index` are inverse transforms of the same dispersion signal.
+
 ## Input format
 
 ```yaml
@@ -52,17 +101,6 @@ Ranges:
 
 - `position`: 0 to 100
 - `power`, `salience`, `risk`: 0.0 to 1.0
-
-## What the model does
-
-- Converts each actor into an influence weight: `power * salience * (1 - risk)`
-- Computes a weighted average outcome
-- Simulates bargaining rounds and revised actor positions
-- Adds a simple confidence score based on how tightly actor positions cluster
-- Adds a plain-language interpretation (low/medium/high) and top pushers
-- Groups actors into higher/lower/neutral alliances relative to the outcome
-- Reports an implied outcome range and a conflict index
-- Ranks actors by influence share
 
 ## Demo dataset (global event)
 
@@ -112,9 +150,9 @@ Axis: trade restrictiveness (0=open trade, 100=high tariffs)
 Equilibrium outcome: 53.96
 Interpretation: medium
 Median actor position: 37.50
-Implied range (10-90%): 21.46 - 86.46
-Bargaining rounds (est.): 10
-Converged: yes
+Implied outcome band: 21.46 - 86.46
+Negotiation intensity (est.): 10
+Model pass: single-pass heuristic
 Confidence: 49%
 Conflict index: 51%
 
@@ -129,6 +167,13 @@ Higher: US Administration, China Government | Lower: US Consumers, WTO Secretari
 
 ```bash
 consiglio predict actors.example.yaml --json
+```
+
+## Optional table output
+
+```bash
+consiglio predict actors.example.yaml --table
+consiglio shock actors.example.yaml --change "Regulator.power+=0.1" --table
 ```
 
 ## Example files

@@ -14,6 +14,7 @@ def main() -> None:
     predict_parser = subparsers.add_parser("predict", help="Predict equilibrium outcome.")
     predict_parser.add_argument("actors", help="Path to actors YAML/JSON file.")
     predict_parser.add_argument("--json", action="store_true", help="Output JSON.")
+    predict_parser.add_argument("--table", action="store_true", help="Output table view.")
     predict_parser.add_argument("--export", dest="export_path", help="Export influence CSV.")
     predict_parser.add_argument("--iterations", type=int, default=100, help=argparse.SUPPRESS)
     predict_parser.add_argument("--epsilon", type=float, default=1e-4, help=argparse.SUPPRESS)
@@ -28,6 +29,7 @@ def main() -> None:
         help="Change an actor field (repeatable).",
     )
     shock_parser.add_argument("--json", action="store_true", help="Output JSON.")
+    shock_parser.add_argument("--table", action="store_true", help="Output table view.")
     shock_parser.add_argument("--set", action="append", default=[], help=argparse.SUPPRESS)
     shock_parser.add_argument("--delta", action="append", default=[], help=argparse.SUPPRESS)
     shock_parser.add_argument("--iterations", type=int, default=100, help=argparse.SUPPRESS)
@@ -84,6 +86,9 @@ def handle_predict(args: argparse.Namespace) -> None:
         print(json.dumps(payload, indent=2))
         return
 
+    if args.table:
+        print_table_summary(result, ranking, meta, interpretation, pushers, actor_summaries, alliances)
+        return
     print_text_summary(result, ranking, meta, interpretation, pushers, actor_summaries, alliances)
 
 
@@ -165,6 +170,18 @@ def handle_shock(args: argparse.Namespace) -> None:
         print(json.dumps(payload, indent=2))
         return
 
+    if args.table:
+        print_shock_table_summary(
+            baseline,
+            shocked_result,
+            baseline_ranking,
+            shocked_ranking,
+            meta,
+            baseline_interpretation,
+            shocked_interpretation,
+        )
+        return
+
     print("Baseline equilibrium:", format_value(baseline["equilibrium"]))
     print("Shock equilibrium:", format_value(shocked_result["equilibrium"]))
     print("Delta:", format_value(shocked_result["equilibrium"] - baseline["equilibrium"]))
@@ -193,9 +210,9 @@ def print_text_summary(
     print("Interpretation:", interpretation)
     print("Median actor position:", format_value(result["median_position"]))
     range_low, range_high = result["outcome_range"]
-    print("Implied range (10-90%):", f"{format_value(range_low)} - {format_value(range_high)}")
-    print("Bargaining rounds (est.):", result["iterations"])
-    print("Converged:", "yes" if result["converged"] else "no")
+    print("Implied outcome band:", f"{format_value(range_low)} - {format_value(range_high)}")
+    print("Negotiation intensity (est.):", result["iterations"])
+    print("Model pass:", "single-pass heuristic")
     print("Confidence:", format_percent(result["confidence"]))
     print("Conflict index:", format_percent(result["conflict_index"]))
     print(
@@ -216,6 +233,129 @@ def print_text_summary(
     print_influence_table(ranking)
 
 
+def print_table_summary(
+    result: dict,
+    ranking: list[dict],
+    meta: dict,
+    interpretation: str,
+    pushers: dict,
+    actor_summaries: list[dict],
+    alliances: dict,
+) -> None:
+    if meta.get("scenario"):
+        print("Scenario:", meta["scenario"])
+    if meta.get("axis"):
+        print("Axis:", meta["axis"])
+    range_low, range_high = result["outcome_range"]
+    metric_rows = [
+        ("Equilibrium", format_value(result["equilibrium"])),
+        ("Interpretation", interpretation),
+        ("Median", format_value(result["median_position"])),
+        ("Implied band", f"{format_value(range_low)} to {format_value(range_high)}"),
+        ("Negotiation intensity", str(result["iterations"])),
+        ("Model pass", "single-pass heuristic"),
+        ("Confidence", format_percent(result["confidence"])),
+        ("Conflict index", format_percent(result["conflict_index"])),
+    ]
+    print("")
+    print_table(["Metric", "Value"], metric_rows)
+    print("")
+    print_table(
+        ["Pusher Direction", "Actors"],
+        [
+            ("Higher", ", ".join(item["name"] for item in pushers.get("higher", [])) or "none"),
+            ("Lower", ", ".join(item["name"] for item in pushers.get("lower", [])) or "none"),
+        ],
+    )
+    print("")
+    print_table(
+        ["Alliance", "Actors"],
+        [
+            ("Higher", ", ".join(alliances.get("higher", [])) or "none"),
+            ("Lower", ", ".join(alliances.get("lower", [])) or "none"),
+            ("Neutral", ", ".join(alliances.get("neutral", [])) or "none"),
+        ],
+    )
+    print("")
+    revised_rows = [
+        (
+            actor["name"],
+            format_value(actor["position_initial"]),
+            format_value(actor["position_final"]),
+            format_signed(actor["shift"]),
+            format_value(actor["pressure"]),
+        )
+        for actor in actor_summaries
+    ]
+    print("Revised positions")
+    print_table(["Actor", "Initial", "Final", "Shift", "Pressure"], revised_rows)
+    print("")
+    top_rows = [
+        (
+            str(idx),
+            item["name"],
+            f"{item['weight']:.3f}",
+            f"{item['share'] * 100:.1f}%",
+            format_value(item["position"]),
+        )
+        for idx, item in enumerate(ranking[:5], start=1)
+    ]
+    print("Top influencers")
+    print_table(["Rank", "Actor", "Weight", "Share", "Position"], top_rows)
+
+
+def print_shock_table_summary(
+    baseline: dict,
+    shocked_result: dict,
+    baseline_ranking: list[dict],
+    shocked_ranking: list[dict],
+    meta: dict,
+    baseline_interpretation: str,
+    shocked_interpretation: str,
+) -> None:
+    if meta.get("scenario"):
+        print("Scenario:", meta["scenario"])
+    if meta.get("axis"):
+        print("Axis:", meta["axis"])
+    print("")
+    metric_rows = [
+        (
+            "Equilibrium",
+            format_value(baseline["equilibrium"]),
+            format_value(shocked_result["equilibrium"]),
+            format_signed(shocked_result["equilibrium"] - baseline["equilibrium"]),
+        ),
+        (
+            "Interpretation",
+            baseline_interpretation,
+            shocked_interpretation,
+            "n/a",
+        ),
+        (
+            "Confidence",
+            format_percent(baseline["confidence"]),
+            format_percent(shocked_result["confidence"]),
+            format_signed((shocked_result["confidence"] - baseline["confidence"]) * 100, suffix="pp"),
+        ),
+        (
+            "Conflict index",
+            format_percent(baseline["conflict_index"]),
+            format_percent(shocked_result["conflict_index"]),
+            format_signed(
+                (shocked_result["conflict_index"] - baseline["conflict_index"]) * 100,
+                suffix="pp",
+            ),
+        ),
+    ]
+    print_table(["Metric", "Baseline", "Shock", "Delta"], metric_rows)
+    print("")
+    print("Top influencers (baseline)")
+    print_rank_table(baseline_ranking)
+    print("")
+    print("Top influencers (shock)")
+    print_rank_table(shocked_ranking)
+
+
 def print_influence_table(ranking: list[dict], limit: int = 5) -> None:
     header = f"{'Rank':<5} {'Actor':<20} {'Weight':<10} {'Share':<8} {'Position':<9}"
     print(header)
@@ -225,6 +365,33 @@ def print_influence_table(ranking: list[dict], limit: int = 5) -> None:
         print(
             f"{idx:<5} {item['name']:<20} {item['weight']:<10.3f} {share:<8} {item['position']:<9.2f}"
         )
+
+
+def print_rank_table(ranking: list[dict], limit: int = 5) -> None:
+    rows = [
+        (
+            str(idx),
+            item["name"],
+            f"{item['weight']:.3f}",
+            f"{item['share'] * 100:.1f}%",
+            format_value(item["position"]),
+        )
+        for idx, item in enumerate(ranking[:limit], start=1)
+    ]
+    print_table(["Rank", "Actor", "Weight", "Share", "Position"], rows)
+
+
+def print_table(headers: list[str], rows: list[tuple[str, ...]]) -> None:
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for idx, value in enumerate(row):
+            widths[idx] = max(widths[idx], len(str(value)))
+    header_line = " | ".join(header.ljust(widths[idx]) for idx, header in enumerate(headers))
+    divider_line = "-+-".join("-" * width for width in widths)
+    print(header_line)
+    print(divider_line)
+    for row in rows:
+        print(" | ".join(str(value).ljust(widths[idx]) for idx, value in enumerate(row)))
 
 
 def export_csv(path: str, ranking: list[dict]) -> None:
@@ -288,6 +455,11 @@ def apply_change(actor, target_name: str, field: str, value: float, is_delta: bo
 
 def format_value(value: float) -> str:
     return f"{value:.2f}"
+
+
+def format_signed(value: float, suffix: str = "") -> str:
+    sign = "+" if value >= 0 else ""
+    return f"{sign}{value:.2f}{suffix}"
 
 
 def format_percent(value: float) -> str:
