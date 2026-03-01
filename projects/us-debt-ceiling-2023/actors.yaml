@@ -1,0 +1,43 @@
+scenario: "2023 US debt ceiling negotiations (Fiscal Responsibility Act)"
+axis: "fiscal tightening in final deal (0=no tightening, 100=severe tightening)"
+actors:
+  - name: White House
+    position: 35
+    power: 0.85
+    salience: 0.95
+    risk: 0.25
+  - name: House Republican Leadership
+    position: 78
+    power: 0.82
+    salience: 0.95
+    risk: 0.3
+  - name: House Freedom Caucus
+    position: 92
+    power: 0.58
+    salience: 0.9
+    risk: 0.35
+  - name: Senate Democrats
+    position: 28
+    power: 0.7
+    salience: 0.75
+    risk: 0.2
+  - name: Senate Republicans
+    position: 62
+    power: 0.62
+    salience: 0.7
+    risk: 0.3
+  - name: Treasury Department
+    position: 18
+    power: 0.65
+    salience: 0.9
+    risk: 0.15
+  - name: Business and Financial Sector
+    position: 22
+    power: 0.6
+    salience: 0.85
+    risk: 0.2
+  - name: Median US Voter
+    position: 45
+    power: 0.55
+    salience: 0.6
+    risk: 0.35

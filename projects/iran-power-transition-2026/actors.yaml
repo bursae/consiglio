@@ -1,0 +1,59 @@
+scenario: "Iran power transition stress test (2026)"
+axis: "post-crisis political order (0=monarchy restoration, 50=people-led plural transition, 100=IRGC-dominant security state)"
+actors:
+  - name: Islamic Revolutionary Guard Corps (IRGC)
+    position: 95
+    power: 0.9
+    salience: 0.95
+    risk: 0.2
+  - name: Security and Intelligence Apparatus
+    position: 90
+    power: 0.82
+    salience: 0.9
+    risk: 0.25
+  - name: Clerical Establishment (Hardline)
+    position: 84
+    power: 0.68
+    salience: 0.85
+    risk: 0.3
+  - name: State Bureaucracy and Judiciary
+    position: 76
+    power: 0.62
+    salience: 0.75
+    risk: 0.28
+  - name: Artesh (Regular Military)
+    position: 66
+    power: 0.57
+    salience: 0.72
+    risk: 0.3
+  - name: Bazaar and Domestic Business Elites
+    position: 60
+    power: 0.58
+    salience: 0.7
+    risk: 0.32
+  - name: Reformist and Pragmatic Political Elites
+    position: 48
+    power: 0.45
+    salience: 0.8
+    risk: 0.35
+  - name: Urban Protest Networks
+    position: 52
+    power: 0.5
+    salience: 0.92
+    risk: 0.4
+  - name: Labor and Oil-Sector Strike Networks
+    position: 56
+    power: 0.52
+    salience: 0.88
+    risk: 0.42
+  - name: Diaspora Monarchist Organizations
+    position: 12
+    power: 0.34
+    salience: 0.85
+    risk: 0.45
+  - name: Exile Opposition (Non-monarchist)
+    position: 44
+    power: 0.3
+    salience: 0.72
+    risk: 0.48
+

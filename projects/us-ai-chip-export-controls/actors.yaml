@@ -1,0 +1,48 @@
+scenario: "US AI chip export controls escalation"
+axis: "export control strictness (0=open exports, 100=maximum restrictions)"
+actors:
+  - name: US National Security Council
+    position: 88
+    power: 0.8
+    salience: 0.9
+    risk: 0.2
+  - name: US Commerce Department (BIS)
+    position: 82
+    power: 0.78
+    salience: 0.85
+    risk: 0.25
+  - name: US Congress (China hawks)
+    position: 86
+    power: 0.7
+    salience: 0.8
+    risk: 0.3
+  - name: US Semiconductor Firms
+    position: 38
+    power: 0.72
+    salience: 0.9
+    risk: 0.22
+  - name: US Cloud Providers
+    position: 42
+    power: 0.65
+    salience: 0.75
+    risk: 0.28
+  - name: Allied Governments (Japan/Netherlands)
+    position: 68
+    power: 0.62
+    salience: 0.7
+    risk: 0.35
+  - name: China Government
+    position: 12
+    power: 0.75
+    salience: 0.95
+    risk: 0.45
+  - name: Global Enterprise Buyers
+    position: 34
+    power: 0.5
+    salience: 0.6
+    risk: 0.3
+  - name: US Inflation-sensitive Consumers
+    position: 28
+    power: 0.45
+    salience: 0.5
+    risk: 0.25

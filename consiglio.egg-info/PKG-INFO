@@ -88,6 +88,30 @@ consiglio predict projects/global-trade-war/actors.yaml
 consiglio predict projects/brexit-referendum/actors.yaml
 ```
 
+## Demo dataset (tech policy)
+
+`projects/us-ai-chip-export-controls/actors.yaml` models a US AI chip export controls negotiation on a 0-100 "export control strictness" axis.
+
+```bash
+consiglio predict projects/us-ai-chip-export-controls/actors.yaml
+```
+
+## Demo dataset (historical back-check)
+
+`projects/us-debt-ceiling-2023/actors.yaml` models the 2023 US debt ceiling negotiations ending in the Fiscal Responsibility Act.
+
+```bash
+consiglio predict projects/us-debt-ceiling-2023/actors.yaml
+```
+
+## Demo dataset (live geopolitical stress test)
+
+`projects/iran-power-transition-2026/actors.yaml` models possible post-crisis Iranian power outcomes on a 0-100 axis from monarchy restoration to IRGC-dominant consolidation.
+
+```bash
+consiglio predict projects/iran-power-transition-2026/actors.yaml
+```
+
 ## Output (example)
 
 ```
@@ -121,6 +145,9 @@ consiglio predict actors.example.yaml --json
 - `projects/global-trade-war/actors.yaml`
 - `projects/brexit-referendum/actors.yaml`
 - `projects/us-greenland/actors.yaml`
+- `projects/us-ai-chip-export-controls/actors.yaml`
+- `projects/us-debt-ceiling-2023/actors.yaml`
+- `projects/iran-power-transition-2026/actors.yaml`
 
 ## License
 
